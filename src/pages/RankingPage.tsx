@@ -1,10 +1,12 @@
-import React from 'react';
-import { Bar } from 'react-chartjs-2';
+import React, { useEffect, useState } from 'react';
+import { Bar, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
+  PointElement,
+  LineElement,
   Title,
   Tooltip,
   Legend,
@@ -13,63 +15,170 @@ import { FaFutbol } from 'react-icons/fa';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
-// Registra os componentes do Chart.js
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+interface RankingData {
+  userName: string;
+  totalSeasonPoints: number;
+  movementIndicator: 'up' | 'down' | null;
+}
 
-// Dados de exemplo para a classificação dos usuários
-const currentRankingData = [
-  { name: 'Alice', score: 120, change: 'up' },
-  { name: 'Bob', score: 115, change: 'down' },
-  { name: 'Charlie', score: 110, change: 'up' },
+interface CumulativeSeries {
+  userName: string;
+  points: { roundNumber: number; cumulativeScore: number }[];
+}
+
+interface CurrentRoundScores {
+  userName: string;
+  roundScore: number;
+}
+
+interface RankingPageProps {
+  ranking: RankingData[];
+  cumulativeSeries: CumulativeSeries[];
+  currentRoundScores: CurrentRoundScores[];
+}
+
+// Registra os componentes do Chart.js
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+// =================================================================
+// DADOS DE EXEMPLO
+// =================================================================
+
+// Dados da rodada atual com pontuações para cada usuário
+const currentRoundScores = [
+  { name: 'Alice', score: 10 },
+  { name: 'Bob', score: 12 },
+  { name: 'Charlie', score: 8 },
 ];
 
-// Componente para a tabela de classificação
-const RankingTable: React.FC = () => {
+// Ordena os usuários do maior para o menor score
+const sortedRoundScores = [...currentRoundScores].sort((a, b) => b.score - a.score);
+
+// Prepara os dados para o gráfico de barras vertical
+const currentRoundData = {
+  labels: sortedRoundScores.map(player => player.name),
+  datasets: [
+    {
+      label: 'Pontuação da Rodada',
+      data: sortedRoundScores.map(player => player.score),
+      backgroundColor: '#10B981',
+    },
+  ],
+};
+
+// Dados de exemplo para o acúmulo de pontos em cada rodada
+const allRoundsData = {
+  labels: ['Rodada 1', 'Rodada 2', 'Rodada 3'],
+  datasets: [
+    {
+      label: 'Alice',
+      data: [10, 18, 25],
+      borderColor: '#10B981',
+      backgroundColor: '#10B981',
+      tension: 0.2,
+    },
+    {
+      label: 'Bob',
+      data: [12, 22, 20],
+      borderColor: '#3B82F6',
+      backgroundColor: '#3B82F6',
+      tension: 0.2,
+    },
+    {
+      label: 'Charlie',
+      data: [8, 16, 36],
+      borderColor: '#F59E0B',
+      backgroundColor: '#F59E0B',
+      tension: 0.2,
+    },
+  ],
+};
+
+// =================================================================
+// COMPONENTE DA TABELA DE CLASSIFICAÇÃO
+// =================================================================
+
+interface IRankingTableProps {
+  ranking: RankingData[];
+}
+
+const RankingTable: React.FC<IRankingTableProps> = ({ ranking }: IRankingTableProps) => {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-300">
         <thead className="bg-gray-200">
           <tr>
-            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
+            <th className="px-4 py-3 text-sm font-semibold text-left text-gray-800">
               Usuário
             </th>
-            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
+            <th className="px-4 py-3 text-sm font-semibold text-left text-gray-800">
               Pontuação
             </th>
             <th className="px-4 py-3" />
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100 bg-white">
-          {currentRankingData.map((player, index) => (
-            <tr key={index}>
-              <td className="px-4 py-3 text-gray-700">{player.name}</td>
-              <td className="px-4 py-3 font-bold text-gray-700">{player.score}</td>
-              <td className="px-4 py-3 flex items-center justify-end">
-                {player.change === 'up' ? (
-                  <div className="flex items-center">
-                    <ChevronUp className="text-green-600 mr-1" />
-                  </div>
-                ) : (
-                  <div className="flex items-center">
-                    <ChevronDown className="text-red-600 mr-1" />
-                  </div>
-                )}
-              </td>
-            </tr>
-          ))}
+        <tbody className="bg-white divide-y divide-gray-100">
+          {
+            ranking.map((player, index) => (
+              <tr key={index}>
+                <td className="px-4 py-3 text-sm text-gray-800">{player.userName}</td>
+                <td className="px-4 py-3 text-sm text-gray-800">{player.totalSeasonPoints}</td>
+                <td className="px-4 py-3 text-sm text-gray-800">
+                  {player.movementIndicator === 'up' && <ChevronUp className="w-4 h-4 text-green-500" />}
+                  {player.movementIndicator === 'down' && <ChevronDown className="w-4 h-4 text-red-500" />}
+                </td>
+              </tr>
+            ))
+          }
         </tbody>
       </table>
     </div>
   );
 };
 
+// =================================================================
+// PÁGINA DE RANKING
+// =================================================================
+
 const RankingPage: React.FC = () => {
+  const [data, setData] = useState<RankingPageProps | null>(null);
+  
+  const fetchData = async () => {
+    const response = await fetch('http://localhost:5264/GeneralInfoPanel/dashboard/1');
+    const responseData = await response.json();
+    setData(responseData);
+  }
+
+  
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center w-full h-screen">
+        <p className="text-2xl text-gray-700">Carregando...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen w-full mx-auto p-8 z-10 absolute flex justify-center">
-      <div className="flex w-full space-x-2">
-        <Card className="w-1/4 bg-green-950 opacity-90 h-full border-none rounded-sm">
+    <div className="absolute z-10 flex justify-center w-full h-screen p-8 mx-auto overflow-y-scroll">
+      <div className="flex flex-col w-full space-x-2 space-y-8 md:flex-row">
+
+        {/* CARD ESQUERDO: Tabela de Classificação Atual */}
+        <Card className="w-full h-full border-none rounded-sm md:w-1/4 md:min-w-75 bg-green-950 opacity-90 ">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold text-white flex items-center justify-center gap-2 relative">
+            <CardTitle className="relative flex items-center justify-center gap-2 text-2xl font-bold text-white">
               <div className="w-8 text-left">
                 <FaFutbol className="text-white" />
               </div>
@@ -80,51 +189,87 @@ const RankingPage: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <RankingTable />
+            {
+              data !== null && data.ranking.length > 0 && <RankingTable ranking={data.ranking} />
+            }
           </CardContent>
         </Card>
-        
-        <Card className="w-3/4 bg-green-950 opacity-90 h-full border-none rounded-sm">
+
+        {/* CARD DIREITO: Gráficos de Desempenho */}
+        <Card className="w-3/4 w-full h-full border-none rounded-sm bg-green-950 opacity-90">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold text-white flex items-center justify-center gap-2 relative">
+            <CardTitle className="relative flex items-center justify-center gap-2 text-2xl font-bold text-white">
               <div className="w-8 text-left">
                 <FaFutbol className="text-white" />
               </div>
               <div className="flex-grow text-center">
-                Classificação por temporada
+                Desempenho por Rodada
               </div>
               <div className="w-8" />
             </CardTitle>
           </CardHeader>
-          <CardContent className='flex flex-col items-center justify-center bg-white rounded-sm p-4 mx-4'>
-            <div className="h-96 w-full">
-              <Bar
-                data={{
-                  labels: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho'],
-                  datasets: [
-                    {
-                      label: 'Pontuação',
-                      data: [100, 110, 120, 130, 140, 150],
-                      backgroundColor: '#10B981',
-                    },
-                  ],
-                }}
-                options={{
-                  scales: {
-                    x: {
-                      grid: {
-                        display: false,
+          <CardContent className="flex flex-col items-center justify-center p-4 mx-4 bg-white rounded-sm md:flex-row">
+            <div className="flex flex-col w-full space-y-8 md:w-1/2">
+              {/* Primeiro Gráfico: Barra vertical ordenada do maior para o menor */}
+              <div className="w-full mb-8">
+                <h2 className="mb-2 text-xl font-semibold text-center text-gray-700">
+                  Pontuação da Rodada Atual (Ordenada)
+                </h2>
+                <div className="h-64">
+                  <Bar
+                     data={{
+                      labels: data.currentRoundScores.map(player => player.userName),
+                      datasets: [
+                        {
+                          label: 'Pontuação da Rodada',
+                          data: data.currentRoundScores.map(player => player.roundScore),
+                          backgroundColor: data.currentRoundScores.map((_, index) => `rgba(75, 192, 192, ${0.2 + index * 0.2})`),
+                          borderColor: data.currentRoundScores.map((_, index) => `rgba(75, 192, 192, ${0.8 + index * 0.1})`),
+                          borderWidth: 1,
+                        },
+                      ],
+                    }}
+                    options={{
+                      maintainAspectRatio: false,
+                      responsive: true,
+                      indexAxis: 'y',
+                      scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, grid: { display: false } },
                       },
-                    },
-                    y: {
-                      beginAtZero: true,
-                      grid: {
-                        display: false,
+                    }}  
+                  />
+                </div>
+              </div>
+
+              {/* Segundo Gráfico: Linha com o acúmulo das rodadas */}
+              <div className="w-full">
+                <h2 className="mb-2 text-xl font-semibold text-center text-gray-700">
+                  Acúmulo de Todas as Rodadas
+                </h2>
+                <div className="h-64">
+                  <Line
+                    data={{
+                      labels: data.cumulativeSeries[0]?.points.map(point => `Rodada ${point.roundNumber}`) || [],
+                      datasets: data.cumulativeSeries.map(series => ({
+                        label: series.userName,
+                        data: series.points.map(point => point.cumulativeScore),
+                        borderColor: '#10B981',
+                        backgroundColor: '#10B981',
+                        tension: 0.2,
+                      })),
+                    }}
+                    options={{
+                      maintainAspectRatio: false,
+                      responsive: true,
+                      scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, grid: { display: false } },
                       },
-                    },
-                  },
-                }}
-              />
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
