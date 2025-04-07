@@ -18,6 +18,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 interface RankingData {
   userName: string;
   totalSeasonPoints: number;
+  totalRawScore: number;
   movementIndicator: 'up' | 'down' | null;
 }
 
@@ -37,6 +38,10 @@ interface RankingPageProps {
   currentRoundScores: CurrentRoundScores[];
 }
 
+interface IRankingTableProps {
+  ranking: RankingData[];
+}
+
 // Registra os componentes do Chart.js
 ChartJS.register(
   CategoryScale,
@@ -49,67 +54,7 @@ ChartJS.register(
   Legend
 );
 
-// =================================================================
-// DADOS DE EXEMPLO
-// =================================================================
-
-// Dados da rodada atual com pontuações para cada usuário
-const currentRoundScores = [
-  { name: 'Alice', score: 10 },
-  { name: 'Bob', score: 12 },
-  { name: 'Charlie', score: 8 },
-];
-
-// Ordena os usuários do maior para o menor score
-const sortedRoundScores = [...currentRoundScores].sort((a, b) => b.score - a.score);
-
-// Prepara os dados para o gráfico de barras vertical
-const currentRoundData = {
-  labels: sortedRoundScores.map(player => player.name),
-  datasets: [
-    {
-      label: 'Pontuação da Rodada',
-      data: sortedRoundScores.map(player => player.score),
-      backgroundColor: '#10B981',
-    },
-  ],
-};
-
-// Dados de exemplo para o acúmulo de pontos em cada rodada
-const allRoundsData = {
-  labels: ['Rodada 1', 'Rodada 2', 'Rodada 3'],
-  datasets: [
-    {
-      label: 'Alice',
-      data: [10, 18, 25],
-      borderColor: '#10B981',
-      backgroundColor: '#10B981',
-      tension: 0.2,
-    },
-    {
-      label: 'Bob',
-      data: [12, 22, 20],
-      borderColor: '#3B82F6',
-      backgroundColor: '#3B82F6',
-      tension: 0.2,
-    },
-    {
-      label: 'Charlie',
-      data: [8, 16, 36],
-      borderColor: '#F59E0B',
-      backgroundColor: '#F59E0B',
-      tension: 0.2,
-    },
-  ],
-};
-
-// =================================================================
-// COMPONENTE DA TABELA DE CLASSIFICAÇÃO
-// =================================================================
-
-interface IRankingTableProps {
-  ranking: RankingData[];
-}
+const colors = ['#FF5733', '#33FF57', '#3357FF', '#F1C40F', '#8E44AD'];
 
 const RankingTable: React.FC<IRankingTableProps> = ({ ranking }: IRankingTableProps) => {
   return (
@@ -123,6 +68,9 @@ const RankingTable: React.FC<IRankingTableProps> = ({ ranking }: IRankingTablePr
             <th className="px-4 py-3 text-sm font-semibold text-left text-gray-800">
               Pontuação
             </th>
+            <th className="px-4 py-3 text-sm font-semibold text-left text-gray-800">
+              Pontuação Geral
+            </th>
             <th className="px-4 py-3" />
           </tr>
         </thead>
@@ -132,6 +80,8 @@ const RankingTable: React.FC<IRankingTableProps> = ({ ranking }: IRankingTablePr
               <tr key={index}>
                 <td className="px-4 py-3 text-sm text-gray-800">{player.userName}</td>
                 <td className="px-4 py-3 text-sm text-gray-800">{player.totalSeasonPoints}</td>
+                <td className="px-4 py-3 text-sm text-gray-800">{player.totalRawScore}</td>
+
                 <td className="px-4 py-3 text-sm text-gray-800">
                   {player.movementIndicator === 'up' && <ChevronUp className="w-4 h-4 text-green-500" />}
                   {player.movementIndicator === 'down' && <ChevronDown className="w-4 h-4 text-red-500" />}
@@ -153,7 +103,7 @@ const RankingPage: React.FC = () => {
   const [data, setData] = useState<RankingPageProps | null>(null);
   
   const fetchData = async () => {
-    const response = await fetch('http://localhost:5264/GeneralInfoPanel/dashboard/1');
+    const response = await fetch('http://localhost:5264/GeneralInfoPanel/dashboard/2');
     const responseData = await response.json();
     setData(responseData);
   }
@@ -203,7 +153,7 @@ const RankingPage: React.FC = () => {
                 <FaFutbol className="text-white" />
               </div>
               <div className="flex-grow text-center">
-                Desempenho por Rodada
+                Desempenho dos Jogadores
               </div>
               <div className="w-8" />
             </CardTitle>
@@ -218,11 +168,13 @@ const RankingPage: React.FC = () => {
                 <div className="h-64">
                   <Bar
                      data={{
-                      labels: data.currentRoundScores.map(player => player.userName),
+                      labels: data.currentRoundScores.map(player => `${player.userName} (${player.roundScore} pontos)`),
                       datasets: [
                         {
                           label: 'Pontuação da Rodada',
-                          data: data.currentRoundScores.map(player => player.roundScore),
+                          data: data.currentRoundScores
+                            .sort((x, y) => y.roundScore - x.roundScore)
+                            .map(player => player.roundScore),
                           backgroundColor: data.currentRoundScores.map((_, index) => `rgba(75, 192, 192, ${0.2 + index * 0.2})`),
                           borderColor: data.currentRoundScores.map((_, index) => `rgba(75, 192, 192, ${0.8 + index * 0.1})`),
                           borderWidth: 1,
@@ -251,11 +203,11 @@ const RankingPage: React.FC = () => {
                   <Line
                     data={{
                       labels: data.cumulativeSeries[0]?.points.map(point => `Rodada ${point.roundNumber}`) || [],
-                      datasets: data.cumulativeSeries.map(series => ({
+                      datasets: data.cumulativeSeries.map((series, index) => ({
                         label: series.userName,
                         data: series.points.map(point => point.cumulativeScore),
-                        borderColor: '#10B981',
-                        backgroundColor: '#10B981',
+                        backgroundColor: colors[index],
+                        borderColor: colors[index],
                         tension: 0.2,
                       })),
                     }}
