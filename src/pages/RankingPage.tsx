@@ -103,7 +103,7 @@ const RankingPage: React.FC = () => {
   const [data, setData] = useState<RankingPageProps | null>(null);
   
   const fetchData = async () => {
-    const response = await fetch('http://localhost:5264/GeneralInfoPanel/dashboard/2');
+    const response = await fetch('https://painelseugilbertoapi.leomarlinhares.com/GeneralInfoPanel/dashboard/2');
     const responseData = await response.json();
     setData(responseData);
   }
