@@ -1,4 +1,3 @@
-import React from 'react';
 import RankingPage from './pages/RankingPage';
 
 const ballrows = 10;
@@ -23,14 +22,14 @@ const Cross = ({ className }: CrossProps) => (
 function App() {
   return (
     <div
-      className="App relative overflow-hidden h-screen" 
+      className="relative h-screen overflow-hidden App" 
       style={{
         background: 'repeating-linear-gradient(90deg, #34d399, #34d399 100px, #6ee7b7 100px, #6ee7b7 200px)'
       }}
     >
-      <div className="z-10 absolute w-full h-full bg-gradient-to-br from-green-400 to-green-800 opacity-60" />
+      <div className="absolute z-10 w-full h-full bg-gradient-to-br from-green-400 to-green-800 opacity-60" />
       <div
-        className="z-10 absolute inset-0 pointer-events-none"
+        className="absolute inset-0 z-10 pointer-events-none"
         style={{
           background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.8) 100%)'
         }}
@@ -40,10 +39,10 @@ function App() {
       <div className='z-10 absolute space-y-2 left-[110px] bottom-[290px]'>
         {
           Array.from({ length: ballrows }).map((_, i) => (
-            <div key={i} className='flex space-x-2 items-center'>
+            <div key={i} className='flex items-center space-x-2'>
               {
                 Array.from({ length: ballcolumns }).map((_, j) => (
-                  <div key={j} className='rounded-full bg-green-500 w-3 h-3 flex items-center justify-center' />
+                  <div key={j} className='flex items-center justify-center w-3 h-3 bg-green-500 rounded-full' />
                 ))
               }
             </div>
