@@ -168,7 +168,9 @@ const RankingPage: React.FC = () => {
                 <div className="h-64">
                   <Bar
                      data={{
-                      labels: data.currentRoundScores.map(player => `${player.userName} (${player.roundScore} pontos)`),
+                      labels: data.currentRoundScores
+                        .sort((x, y) => y.roundScore - x.roundScore)
+                        .map(player => `${player.userName} (${player.roundScore} pontos)`),
                       datasets: [
                         {
                           label: 'Pontuação da Rodada',
